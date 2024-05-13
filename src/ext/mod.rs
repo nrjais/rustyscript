@@ -20,9 +20,6 @@ pub mod web_stub;
 #[cfg(feature = "webidl")]
 pub mod webidl;
 
-#[cfg(feature = "io")]
-pub mod io;
-
 ///
 /// Add up all required extensions
 pub fn all_extensions(user_extensions: Vec<Extension>) -> Vec<Extension> {
@@ -45,9 +42,6 @@ pub fn all_extensions(user_extensions: Vec<Extension>) -> Vec<Extension> {
 
     #[cfg(feature = "crypto")]
     extensions.extend(crypto::extensions());
-
-    #[cfg(feature = "io")]
-    extensions.extend(io::extensions());
 
     extensions.extend(user_extensions);
     extensions
