@@ -1,4 +1,4 @@
-use std::{collections::HashMap};
+use std::collections::HashMap;
 
 use deno_core::{
     parking_lot::Mutex, ModuleCodeBytes, ModuleSource, ModuleSourceCode, ModuleSpecifier,
