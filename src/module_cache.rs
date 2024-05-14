@@ -1,9 +1,8 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap};
 
 use deno_core::{
     parking_lot::Mutex, ModuleCodeBytes, ModuleSource, ModuleSourceCode, ModuleSpecifier,
 };
-use tokio::fs;
 
 /// Module cache provider trait
 /// Implement this trait to provide a custom module cache

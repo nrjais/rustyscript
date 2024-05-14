@@ -164,6 +164,7 @@ mod ext;
 mod inner_runtime;
 mod js_function;
 mod module;
+pub mod module_cache;
 mod module_handle;
 mod module_loader;
 mod module_wrapper;
@@ -171,7 +172,6 @@ mod runtime;
 mod traits;
 mod transpiler;
 mod utilities;
-pub mod module_cache;
 
 // Expose a few dependencies that could be useful
 pub use deno_core;

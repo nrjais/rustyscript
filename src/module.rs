@@ -206,6 +206,6 @@ mod test_module {
     fn test_load_dir() {
         let modules =
             Module::load_dir("src/ext/rustyscript").expect("Failed to load modules from directory");
-        assert!(modules.len() > 0);
+        assert!(!modules.is_empty());
     }
 }

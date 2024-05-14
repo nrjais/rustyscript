@@ -209,8 +209,8 @@ mod test_runtime {
         let mut module = ModuleWrapper::new_from_module(&module, RuntimeOptions::default())
             .expect("Could not create wrapper");
 
-        assert_eq!(true, module.is_callable("func"));
-        assert_eq!(false, module.is_callable("value"));
+        assert!(module.is_callable("func"));
+        assert!(!module.is_callable("value"));
     }
 
     #[test]

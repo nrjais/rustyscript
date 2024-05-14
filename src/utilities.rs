@@ -144,8 +144,8 @@ mod test_runtime {
 
     #[test]
     fn test_validate() {
-        assert_eq!(true, validate("3 + 2").expect("invalid expression"));
-        assert_eq!(false, validate("5;+-").expect("invalid expression"));
+        assert!(validate("3 + 2").expect("invalid expression"));
+        assert!(!validate("5;+-").expect("invalid expression"));
     }
 
     #[test]
