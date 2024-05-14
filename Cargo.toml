@@ -50,6 +50,7 @@ deno_ast = { version = "0.38.1", features = ["transpiling"] }
 thiserror = "1.0.59"
 serde = "1.0.200"
 tokio = "1.37.0"
+async-trait = "0.1.51"
 
 # For URL imports
 reqwest = { version = "0.12.4", optional = true, features = ["blocking"] }

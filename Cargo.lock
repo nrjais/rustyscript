@@ -2663,6 +2663,7 @@ checksum = "092474d1a01ea8278f69e6a358998405fae5b8b963ddaeb2b0b04a128bf1dfb0"
 name = "rustyscript"
 version = "0.4.3"
 dependencies = [
+ "async-trait",
  "criterion",
  "deno_ast",
  "deno_console",

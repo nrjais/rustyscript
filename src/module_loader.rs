@@ -5,8 +5,6 @@ use deno_core::{
     ModuleSpecifier, ModuleType,
 };
 use std::{
-    borrow::Borrow,
-    cell::RefCell,
     collections::{HashMap, HashSet},
     rc::Rc,
     sync::Mutex,
@@ -16,9 +14,10 @@ use std::{
 /// Implement this trait to provide a custom module cache
 /// You will need to use interior due to the deno's loader trait
 /// Default cache for the loader is in-memory
+#[async_trait::async_trait]
 pub trait ModuleCacheProvider {
-    fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource);
-    fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource>;
+    async fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource);
+    async fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource>;
 
     fn clone_source(&self, specifier: &ModuleSpecifier, source: &ModuleSource) -> ModuleSource {
         ModuleSource::new(
@@ -37,23 +36,36 @@ pub trait ModuleCacheProvider {
 
 /// Default in-memory module cache provider
 #[derive(Default)]
-pub struct MemoryModuleCacheProvider(RefCell<HashMap<ModuleSpecifier, ModuleSource>>);
+pub struct MemoryModuleCacheProvider(Mutex<HashMap<ModuleSpecifier, ModuleSource>>);
+
+#[async_trait::async_trait]
 impl ModuleCacheProvider for MemoryModuleCacheProvider {
-    fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource) {
-        self.0.borrow_mut().insert(specifier.clone(), source);
+    async fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource) {
+        let cache = &mut self.0.lock().expect("Poisoned");
+        cache.insert(specifier.clone(), source);
     }
 
-    fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource> {
-        let cache = self.0.borrow();
+    async fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource> {
+        let cache = &self.0.lock().expect("Poisoned");
         let source = cache.get(specifier)?;
         Some(Self::clone_source(self, specifier, source))
     }
 }
 
+#[async_trait::async_trait]
+impl ModuleCacheProvider for () {
+    async fn set(&self, _: &ModuleSpecifier, _: ModuleSource) {}
+
+    async fn get(&self, _: &ModuleSpecifier) -> Option<ModuleSource> {
+        None
+    }
+}
+
 pub struct RustyLoader {
     fs_whlist: Mutex<HashSet<String>>,
-    cache_provider: Mutex<Rc<Option<Box<dyn ModuleCacheProvider>>>>,
+    cache_provider: Rc<dyn ModuleCacheProvider>,
 }
+
 #[allow(unreachable_code)]
 impl ModuleLoader for RustyLoader {
     fn resolve(
@@ -112,7 +124,7 @@ impl ModuleLoader for RustyLoader {
             "https" | "http" => {
                 let future = Self::load_external(
                     module_specifier.clone(),
-                    Rc::clone(self.cache_provider.lock().unwrap().borrow()),
+                    Rc::clone(&self.cache_provider),
                     |specifier| async {
                         let response = reqwest::get(specifier).await?;
                         Ok(response.text().await?)
@@ -125,7 +137,7 @@ impl ModuleLoader for RustyLoader {
             "file" => {
                 let future = Self::load_external(
                     module_specifier.clone(),
-                    Rc::clone(self.cache_provider.lock().unwrap().borrow()),
+                    Rc::clone(&self.cache_provider),
                     |specifier| async move {
                         let path = specifier
                             .to_file_path()
@@ -147,10 +159,10 @@ impl ModuleLoader for RustyLoader {
 
 #[allow(dead_code)]
 impl RustyLoader {
-    pub fn new(cache_provider: Option<Box<dyn ModuleCacheProvider>>) -> Self {
+    pub fn new(cache_provider: Rc<dyn ModuleCacheProvider>) -> Self {
         Self {
             fs_whlist: Mutex::new(Default::default()),
-            cache_provider: Mutex::new(Rc::new(cache_provider)),
+            cache_provider,
         }
     }
 
@@ -169,40 +181,35 @@ impl RustyLoader {
     }
 
     async fn load_external<F, Fut>(
-        module_specifier: ModuleSpecifier,
-        cache_provider: std::rc::Rc<Option<Box<dyn ModuleCacheProvider>>>,
+        ms: ModuleSpecifier,
+        cp: Rc<dyn ModuleCacheProvider>,
         handler: F,
     ) -> Result<ModuleSource, deno_core::error::AnyError>
     where
         F: Fn(ModuleSpecifier) -> Fut,
         Fut: std::future::Future<Output = Result<String, deno_core::error::AnyError>>,
     {
-        let cache_provider = cache_provider.as_ref().as_ref().map(|p| p.as_ref());
-        match cache_provider.map(|p| p.get(&module_specifier)) {
-            Some(Some(source)) => Ok(source),
+        match cp.get(&ms).await {
+            Some(source) => Ok(source),
             _ => {
-                let module_type = if module_specifier.path().ends_with(".json") {
+                let module_type = if ms.path().ends_with(".json") {
                     ModuleType::Json
                 } else {
                     ModuleType::JavaScript
                 };
 
-                let code = handler(module_specifier.clone()).await?;
-                let code = transpiler::transpile(&module_specifier, &code)?;
+                let code = handler(ms.clone()).await?;
+                let code = transpiler::transpile(&ms, &code)?;
 
                 let source = ModuleSource::new(
                     module_type,
                     ModuleSourceCode::String(code.into()),
-                    &module_specifier,
+                    &ms,
                     None,
                 );
 
-                if let Some(p) = cache_provider {
-                    p.set(
-                        &module_specifier,
-                        p.clone_source(&module_specifier, &source),
-                    );
-                }
+                cp.set(&ms, cp.clone_source(&ms, &source)).await;
+
                 Ok(source)
             }
         }
@@ -225,12 +232,16 @@ mod test {
             None,
         );
 
-        cache_provider.set(&specifier, cache_provider.clone_source(&specifier, &source));
+        cache_provider
+            .set(&specifier, cache_provider.clone_source(&specifier, &source))
+            .await;
+
         let cached_source = cache_provider
             .get(&specifier)
+            .await
             .expect("Expected to get cached source");
 
-        let loader = RustyLoader::new(Some(Box::new(cache_provider)));
+        let loader = RustyLoader::new(Rc::new(cache_provider));
         let response = loader.load(
             &specifier,
             None,

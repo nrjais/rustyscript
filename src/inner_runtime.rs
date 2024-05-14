@@ -27,7 +27,7 @@ pub struct InnerRuntimeOptions {
     /// Amount of time to run for before killing the thread
     pub timeout: Duration,
 
-    pub module_cache: Option<Box<dyn ModuleCacheProvider>>,
+    pub module_cache: Rc<dyn ModuleCacheProvider>,
 }
 
 impl Default for InnerRuntimeOptions {
@@ -36,7 +36,7 @@ impl Default for InnerRuntimeOptions {
             extensions: Default::default(),
             default_entrypoint: Default::default(),
             timeout: Duration::MAX,
-            module_cache: None,
+            module_cache: Rc::new(()),
         }
     }
 }
@@ -47,6 +47,7 @@ pub struct InnerRuntime {
     pub deno_runtime: JsRuntime,
     pub options: InnerRuntimeOptions,
 }
+
 impl InnerRuntime {
     pub fn new(options: InnerRuntimeOptions) -> Self {
         Self {
@@ -600,8 +601,8 @@ mod test_inner_runtime {
             "test.js",
             "
             globalThis.fna = (i) => i;
-            export function fnb() { 
-                return 'test'; 
+            export function fnb() {
+                return 'test';
             }
             export const fnc = 2;
             export const fne = () => {};
