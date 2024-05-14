@@ -1,65 +1,9 @@
-use crate::transpiler;
+use crate::{module_cache::ModuleCacheProvider, transpiler};
 use deno_core::{
     anyhow::{self, anyhow},
-    ModuleCodeBytes, ModuleLoadResponse, ModuleLoader, ModuleSource, ModuleSourceCode,
-    ModuleSpecifier, ModuleType,
+    ModuleLoadResponse, ModuleLoader, ModuleSource, ModuleSourceCode, ModuleSpecifier, ModuleType,
 };
-use std::{
-    collections::{HashMap, HashSet},
-    rc::Rc,
-    sync::Mutex,
-};
-
-/// Module cache provider trait
-/// Implement this trait to provide a custom module cache
-/// You will need to use interior due to the deno's loader trait
-/// Default cache for the loader is in-memory
-#[async_trait::async_trait]
-pub trait ModuleCacheProvider {
-    async fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource);
-    async fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource>;
-
-    fn clone_source(&self, specifier: &ModuleSpecifier, source: &ModuleSource) -> ModuleSource {
-        ModuleSource::new(
-            source.module_type.clone(),
-            match &source.code {
-                ModuleSourceCode::String(s) => ModuleSourceCode::String(s.to_string().into()),
-                ModuleSourceCode::Bytes(b) => {
-                    ModuleSourceCode::Bytes(ModuleCodeBytes::Boxed(b.to_vec().into()))
-                }
-            },
-            specifier,
-            source.code_cache.clone(),
-        )
-    }
-}
-
-/// Default in-memory module cache provider
-#[derive(Default)]
-pub struct MemoryModuleCacheProvider(Mutex<HashMap<ModuleSpecifier, ModuleSource>>);
-
-#[async_trait::async_trait]
-impl ModuleCacheProvider for MemoryModuleCacheProvider {
-    async fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource) {
-        let cache = &mut self.0.lock().expect("Poisoned");
-        cache.insert(specifier.clone(), source);
-    }
-
-    async fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource> {
-        let cache = &self.0.lock().expect("Poisoned");
-        let source = cache.get(specifier)?;
-        Some(Self::clone_source(self, specifier, source))
-    }
-}
-
-#[async_trait::async_trait]
-impl ModuleCacheProvider for () {
-    async fn set(&self, _: &ModuleSpecifier, _: ModuleSource) {}
-
-    async fn get(&self, _: &ModuleSpecifier) -> Option<ModuleSource> {
-        None
-    }
-}
+use std::{collections::HashSet, rc::Rc, sync::Mutex};
 
 pub struct RustyLoader {
     fs_whlist: Mutex<HashSet<String>>,
@@ -219,7 +163,7 @@ impl RustyLoader {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::traits::ToModuleSpecifier;
+    use crate::{module_cache::MemoryModuleCacheProvider, traits::ToModuleSpecifier};
 
     #[tokio::test]
     async fn test_loader() {

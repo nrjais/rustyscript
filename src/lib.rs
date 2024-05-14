@@ -132,7 +132,7 @@
 //!
 //! Please note that the `web` feature will also enable fs_import and url_import, allowing arbitrary filesystem and network access for import statements
 //!
-//! | Feature     | Description                                                                                       | Preserves Sandbox | Dependencies                                                                   |  
+//! | Feature     | Description                                                                                       | Preserves Sandbox | Dependencies                                                                   |
 //! |-------------|---------------------------------------------------------------------------------------------------|------------------|---------------------------------------------------------------------------------|
 //! |console      |Provides `console.*` functionality from JS                                                         |yes               |deno_console                                                                     |
 //! |crypto       |Provides `crypto.*` functionality from JS                                                          |yes               |deno_crypto, deno_webidl                                                         |
@@ -171,6 +171,7 @@ mod runtime;
 mod traits;
 mod transpiler;
 mod utilities;
+pub mod module_cache;
 
 // Expose a few dependencies that could be useful
 pub use deno_core;

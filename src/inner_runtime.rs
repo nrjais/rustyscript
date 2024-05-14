@@ -1,7 +1,8 @@
 use crate::{
     ext,
     js_function::JsFunction,
-    module_loader::{ModuleCacheProvider, RustyLoader},
+    module_cache::ModuleCacheProvider,
+    module_loader::RustyLoader,
     traits::{ToDefinedValue, ToModuleSpecifier, ToV8String},
     transpiler, Error, Module, ModuleHandle,
 };
