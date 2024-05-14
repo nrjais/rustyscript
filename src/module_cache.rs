@@ -58,3 +58,49 @@ impl ModuleCacheProvider for MemoryModuleCacheProvider {
         Some(Self::clone_source(self, specifier, source))
     }
 }
+
+/// Default in-memory module cache provider
+pub struct FSModuleCacheProvider {
+    root: PathBuf,
+    cache: MemoryModuleCacheProvider,
+}
+
+impl FSModuleCacheProvider {
+    pub fn new(root: PathBuf) -> Self {
+        Self {
+            root,
+            cache: MemoryModuleCacheProvider::default(),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl ModuleCacheProvider for FSModuleCacheProvider {
+    async fn set(&self, specifier: &ModuleSpecifier, source: ModuleSource) {
+        let source_str = match &source.code {
+            ModuleSourceCode::String(s) => s.to_string(),
+            ModuleSourceCode::Bytes(b) => {
+                let b = b.to_vec();
+                String::from_utf8(b).unwrap()
+            }
+        };
+
+        let path = self.root.join(specifier.as_str());
+        fs::write(path, source_str).await;
+        self.cache.set(specifier, source).await;
+    }
+
+    async fn get(&self, specifier: &ModuleSpecifier) -> Option<ModuleSource> {
+        let res = self.cache.get(specifier).await;
+        if res.is_none() {
+            let path = self.root.join(specifier.as_str());
+            let source_str = fs::read_to_string(path).await.ok()?;
+            let source =
+                ModuleSource::new(ModuleSourceCode::String(source_str.into()), specifier, None);
+            self.cache.set(specifier, source.clone()).await;
+            Some(source)
+        } else {
+            res
+        }
+    }
+}
