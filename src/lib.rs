@@ -164,7 +164,7 @@ mod ext;
 mod inner_runtime;
 mod js_function;
 mod module;
-pub mod module_cache;
+mod module_cache;
 mod module_handle;
 mod module_loader;
 mod module_wrapper;
