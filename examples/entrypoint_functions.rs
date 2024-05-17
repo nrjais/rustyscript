@@ -10,7 +10,8 @@
 ///
 use rustyscript::{json_args, Error, Module, Runtime, RuntimeOptions, Undefined};
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let module = Module::new(
         "test.js",
         "
@@ -28,14 +29,18 @@ fn main() -> Result<(), Error> {
         default_entrypoint: Some("setUp".to_string()),
         ..Default::default()
     })?;
-    let module_handle = runtime.load_module(&module)?;
+    let module_handle = runtime.load_module(&module).await?;
 
     // We call the entrypoint - Undefined just means we don't care about
     // the return type here
-    runtime.call_entrypoint::<Undefined>(&module_handle, json_args!(2))?;
+    runtime
+        .call_entrypoint::<Undefined>(&module_handle, json_args!(2))
+        .await?;
 
     // Now the setUp is done, and the internal value is ready for use
-    let internal_value: usize = runtime.call_function(&module_handle, "getValue", json_args!())?;
+    let internal_value: usize = runtime
+        .call_function(&module_handle, "getValue", json_args!())
+        .await?;
     assert_eq!(4, internal_value);
     Ok(())
 }

@@ -12,7 +12,8 @@ use rustyscript::{Error, Module, Runtime, RuntimeOptions};
 mod ext;
 use ext::example_extension;
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let module = Module::new("test.js", " export const result = example_ext.add(5, 5); ");
 
     // We provide a function returning the set of extensions to load
@@ -22,9 +23,9 @@ fn main() -> Result<(), Error> {
         extensions: vec![example_extension::example_extension::init_ops_and_esm()],
         ..Default::default()
     })?;
-    let module_handle = runtime.load_module(&module)?;
+    let module_handle = runtime.load_module(&module).await?;
 
-    let result: i64 = runtime.get_value(&module_handle, "result")?;
+    let result: i64 = runtime.get_value(&module_handle, "result").await?;
     assert_eq!(10, result);
     Ok(())
 }

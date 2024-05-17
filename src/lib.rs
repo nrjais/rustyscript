@@ -17,6 +17,7 @@
 //! use rustyscript::{json_args, Runtime, Module, Error};
 //!
 //! # fn main() -> Result<(), Error> {
+//! # tokio_test::block_on(async {
 //! let module = Module::new(
 //!     "test.js",
 //!     "
@@ -33,10 +34,11 @@
 //!     &module, vec![],
 //!     Default::default(),
 //!     json_args!("test", 5)
-//! )?;
+//! ).await?;
 //!
 //! assert_eq!(value, 2);
 //! # Ok(())
+//! # })
 //! # }
 //! ```
 //!
@@ -46,14 +48,18 @@
 //!
 //! If all you need is the result of a single javascript expression, you can use:
 //! ```rust
-//! let result: i64 = rustyscript::evaluate("5 + 5").expect("The expression was invalid!");
+//! # tokio_test::block_on(async {
+//! let result: i64 = rustyscript::evaluate("5 + 5").await.expect("The expression was invalid!");
+//! # })
 //! ```
 //!
 //! Or to just import a single module for use:
 //! ```no_run
+//! # tokio_test::block_on(async {
 //! use rustyscript::{json_args, import};
-//! let mut module = import("js/my_module.js").expect("Something went wrong!");
-//! let value: String = module.call("exported_function_name", json_args!()).expect("Could not get a value!");
+//! let mut module = import("js/my_module.js").await.expect("Something went wrong!");
+//! let value: String = module.call("exported_function_name", json_args!()).await.expect("Could not get a value!");
+//! # })
 //! ```
 //!
 //! There are a few other utilities included, such as `rustyscript::validate` and `rustyscript::resolve_path`
@@ -66,6 +72,7 @@
 //! use std::time::Duration;
 //!
 //! # fn main() -> Result<(), Error> {
+//! # tokio_test::block_on(async {
 //! let module = Module::new(
 //!     "test.js",
 //!     "
@@ -86,12 +93,13 @@
 //! // We then call the entrypoint function, but do not need a return value.
 //! //Load can be called multiple times, and modules can import other loaded modules
 //! // Using `import './filename.js'`
-//! let module_handle = runtime.load_module(&module)?;
-//! runtime.call_entrypoint::<Undefined>(&module_handle, json_args!(2))?;
+//! let module_handle = runtime.load_module(&module).await?;
+//! runtime.call_entrypoint::<Undefined>(&module_handle, json_args!(2)).await?;
 //!
 //! // Functions don't need to be the entrypoint to be callable!
-//! let internal_value: i64 = runtime.call_function(&module_handle, "getValue", json_args!())?;
+//! let internal_value: i64 = runtime.call_function(&module_handle, "getValue", json_args!()).await?;
 //! # Ok(())
+//! # })
 //! # }
 //! ```
 //!
@@ -100,6 +108,7 @@
 //! use rustyscript::{ Runtime, Module, serde_json::Value };
 //!
 //! # fn main() -> Result<(), rustyscript::Error> {
+//! # tokio_test::block_on(async {
 //! let module = Module::new("test.js", " rustyscript.functions.foo(); ");
 //! let mut runtime = Runtime::new(Default::default())?;
 //! runtime.register_function("foo", |args, _state| {
@@ -108,8 +117,9 @@
 //!     }
 //!     Ok(Value::Null)
 //! })?;
-//! runtime.load_module(&module)?;
+//! runtime.load_module(&module).await?;
 //! # Ok(())
+//! # })
 //! # }
 //! ```
 //!

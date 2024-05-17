@@ -19,9 +19,9 @@ impl ModuleWrapper {
     /// # Returns
     ///
     /// A `Result` containing `Self` on success or an `Error` on failure.
-    pub fn new_from_module(module: &Module, options: RuntimeOptions) -> Result<Self, Error> {
+    pub async fn new_from_module(module: &Module, options: RuntimeOptions) -> Result<Self, Error> {
         let mut runtime = Runtime::new(options)?;
-        let module_context = runtime.load_module(module)?;
+        let module_context = runtime.load_module(module).await?;
         Ok(Self {
             module_context,
             runtime,
@@ -38,9 +38,9 @@ impl ModuleWrapper {
     /// # Returns
     ///
     /// A `Result` containing `Self` on success or an `Error` on failure.
-    pub fn new_from_file(path: &str, options: RuntimeOptions) -> Result<Self, Error> {
+    pub async fn new_from_file(path: &str, options: RuntimeOptions) -> Result<Self, Error> {
         let module = Module::load(path)?;
-        Self::new_from_module(&module, options)
+        Self::new_from_module(&module, options).await
     }
 
     /// Returns a reference to the module context.
@@ -62,11 +62,11 @@ impl ModuleWrapper {
     /// # Returns
     ///
     /// A `Result` containing the deserialized value of type `T` on success or an `Error` on failure.
-    pub fn get<T>(&mut self, name: &str) -> Result<T, Error>
+    pub async fn get<T>(&mut self, name: &str) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned,
     {
-        self.runtime.get_value(&self.module_context, name)
+        self.runtime.get_value(&self.module_context, name).await
     }
 
     /// Checks if a value in the module with the given name is callable as a JavaScript function.
@@ -78,10 +78,9 @@ impl ModuleWrapper {
     /// # Returns
     ///
     /// `true` if the value is callable as a JavaScript function, `false` otherwise.
-    pub fn is_callable(&mut self, name: &str) -> bool {
+    pub async fn is_callable(&mut self, name: &str) -> bool {
         let test = self.get::<JsFunction>(name);
-        println!("{:?}", test);
-        test.is_ok()
+        test.await.is_ok()
     }
 
     /// Calls a function in the module with the given name and arguments and deserializes the result.
@@ -94,11 +93,13 @@ impl ModuleWrapper {
     /// # Returns
     ///
     /// A `Result` containing the deserialized result of type `T` on success or an `Error` on failure.
-    pub fn call<T>(&mut self, name: &str, args: &[serde_json::Value]) -> Result<T, Error>
+    pub async fn call<T>(&mut self, name: &str, args: &[serde_json::Value]) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned,
     {
-        self.runtime.call_function(&self.module_context, name, args)
+        self.runtime
+            .call_function(&self.module_context, name, args)
+            .await
     }
 
     /// Calls a function using the module's runtime that was previously stored
@@ -112,9 +113,9 @@ impl ModuleWrapper {
     /// # Returns
     ///
     /// A `Result` containing the deserialized result of type `T` on success or an `Error` on failure.
-    pub fn call_stored<T>(
-        &mut self,
-        function: &JsFunction,
+    pub async fn call_stored<'a, T>(
+        &'a mut self,
+        function: &JsFunction<'a>,
         args: &[serde_json::Value],
     ) -> Result<T, Error>
     where
@@ -122,6 +123,7 @@ impl ModuleWrapper {
     {
         self.runtime
             .call_stored_function(&self.module_context, function, args)
+            .await
     }
 
     /// Retrieves the names of the module's exports.
@@ -161,8 +163,8 @@ mod test_runtime {
     use super::*;
     use crate::json_args;
 
-    #[test]
-    fn test_call() {
+    #[tokio::test]
+    async fn test_call() {
         let module = Module::new(
             "test.js",
             "
@@ -173,15 +175,17 @@ mod test_runtime {
         );
 
         let mut module = ModuleWrapper::new_from_module(&module, RuntimeOptions::default())
+            .await
             .expect("Could not create wrapper");
         let value: usize = module
             .call("func", json_args!())
+            .await
             .expect("Could not call function");
         assert_eq!(4, value);
     }
 
-    #[test]
-    fn test_get() {
+    #[tokio::test]
+    async fn test_get() {
         let module = Module::new(
             "test.js",
             "
@@ -191,13 +195,14 @@ mod test_runtime {
         );
 
         let mut module = ModuleWrapper::new_from_module(&module, RuntimeOptions::default())
+            .await
             .expect("Could not create wrapper");
-        let value: usize = module.get("value").expect("Could not get value");
+        let value: usize = module.get("value").await.expect("Could not get value");
         assert_eq!(3, value);
     }
 
-    #[test]
-    fn test_callable() {
+    #[tokio::test]
+    async fn test_callable() {
         let module = Module::new(
             "test.js",
             "
@@ -207,14 +212,15 @@ mod test_runtime {
         );
 
         let mut module = ModuleWrapper::new_from_module(&module, RuntimeOptions::default())
+            .await
             .expect("Could not create wrapper");
 
-        assert!(module.is_callable("func"));
-        assert!(!module.is_callable("value"));
+        assert!(module.is_callable("func").await);
+        assert!(!module.is_callable("value").await);
     }
 
-    #[test]
-    fn test_keys() {
+    #[tokio::test]
+    async fn test_keys() {
         let module = Module::new(
             "test.js",
             "
@@ -224,6 +230,7 @@ mod test_runtime {
         );
 
         let mut module = ModuleWrapper::new_from_module(&module, RuntimeOptions::default())
+            .await
             .expect("Could not create wrapper");
         let mut keys = module.keys();
         assert_eq!(2, keys.len());

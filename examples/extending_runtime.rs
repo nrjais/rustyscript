@@ -34,13 +34,13 @@ const MY_MODULE: StaticModule = module!(
 pub struct MyRuntime(Runtime);
 impl MyRuntime {
     /// Create a new instance of the runtime
-    pub fn new() -> Result<Self, Error> {
+    pub async fn new() -> Result<Self, Error> {
         let mut runtime = Self(Runtime::new(RuntimeOptions {
             extensions: vec![example_extension::example_extension::init_ops_and_esm()],
             timeout: Duration::from_millis(500),
             ..Default::default()
         })?);
-        runtime.load_module(&MY_MODULE.to_module())?;
+        runtime.load_module(&MY_MODULE.to_module()).await?;
 
         Ok(runtime)
     }
@@ -49,7 +49,7 @@ impl MyRuntime {
     ///
     /// # Arguments
     /// * `name` - A string representing the name of the javascript function to call.
-    pub fn call_function<T>(
+    pub async fn call_function<T>(
         &mut self,
         module_context: &ModuleHandle,
         name: &str,
@@ -58,18 +58,22 @@ impl MyRuntime {
     where
         T: deno_core::serde::de::DeserializeOwned,
     {
-        self.0.call_function(module_context, name, args)
+        self.0.call_function(module_context, name, args).await
     }
 
     /// Get a value from a runtime instance
     ///
     /// # Arguments
     /// * `name` - A string representing the name of the value to find
-    pub fn get_value<T>(&mut self, module_context: &ModuleHandle, name: &str) -> Result<T, Error>
+    pub async fn get_value<T>(
+        &mut self,
+        module_context: &ModuleHandle,
+        name: &str,
+    ) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned,
     {
-        self.0.get_value(module_context, name)
+        self.0.get_value(module_context, name).await
     }
 
     /// Executes the given module, and returns a handle allowing you to extract values
@@ -77,12 +81,13 @@ impl MyRuntime {
     ///
     /// # Arguments
     /// * `module` - A `Module` object containing the module's filename and contents.
-    pub fn load_module(&mut self, module: &Module) -> Result<ModuleHandle, Error> {
-        self.0.load_module(module)
+    pub async fn load_module(&mut self, module: &Module) -> Result<ModuleHandle, Error> {
+        self.0.load_module(module).await
     }
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let module = Module::new(
         "test.js",
         "
@@ -91,9 +96,9 @@ fn main() -> Result<(), Error> {
         ",
     );
 
-    let mut runtime = MyRuntime::new()?;
-    let module_context = runtime.load_module(&module)?;
-    let value: i32 = runtime.get_value(&module_context, "value")?;
+    let mut runtime = MyRuntime::new().await?;
+    let module_context = runtime.load_module(&module).await?;
+    let value: i32 = runtime.get_value(&module_context, "value").await?;
     assert_eq!(42, value);
 
     Ok(())

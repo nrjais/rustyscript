@@ -58,32 +58,38 @@ struct BridgeCrossingAttempt {
     favourite_colour: String,
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     // We only have one source file, so it is simpler here to just use this wrapper type
     // As opposed to building a complete runtime.
-    let mut module = ModuleWrapper::new_from_module(&MY_MODULE.to_module(), Default::default())?;
+    let mut module =
+        ModuleWrapper::new_from_module(&MY_MODULE.to_module(), Default::default()).await?;
 
     // Although we can use json_args!() to call a function with primitives as arguments
     // More complicated types must use `Runtime::arg`
-    let result: BridgeCrossingResult = module.call(
-        "checkAttempt",
-        &[Runtime::arg(BridgeCrossingAttempt {
-            name: "Lancelot".to_string(),
-            quest: Quest::Groceries,
-            favourite_colour: "blue".to_string(),
-        })?],
-    )?;
+    let result: BridgeCrossingResult = module
+        .call(
+            "checkAttempt",
+            &[Runtime::arg(BridgeCrossingAttempt {
+                name: "Lancelot".to_string(),
+                quest: Quest::Groceries,
+                favourite_colour: "blue".to_string(),
+            })?],
+        )
+        .await?;
     assert_eq!(result, BridgeCrossingResult::Denied);
 
     // Let us try again with different values...
-    let result: BridgeCrossingResult = module.call(
-        "checkAttempt",
-        &[Runtime::arg(BridgeCrossingAttempt {
-            name: "Lancelot".to_string(),
-            quest: Quest::HolyGrail,
-            favourite_colour: "blue".to_string(),
-        })?],
-    )?;
+    let result: BridgeCrossingResult = module
+        .call(
+            "checkAttempt",
+            &[Runtime::arg(BridgeCrossingAttempt {
+                name: "Lancelot".to_string(),
+                quest: Quest::HolyGrail,
+                favourite_colour: "blue".to_string(),
+            })?],
+        )
+        .await?;
     assert_eq!(result, BridgeCrossingResult::Permitted);
 
     Ok(())

@@ -8,7 +8,8 @@ use std::time::Duration;
 ///
 use rustyscript::{json_args, Error, Module, Runtime, RuntimeOptions};
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     // This module has an async function, which is not itself a problem
     // However, it uses setTimeout - the timer will never be triggered
     // unless the web feature is active.
@@ -44,13 +45,16 @@ fn main() -> Result<(), Error> {
     })?;
 
     // The async function
-    let module_handle = runtime.load_module(&module)?;
-    let value: usize = runtime.call_function(&module_handle, "test", json_args!())?;
+    let module_handle = runtime.load_module(&module).await?;
+    let value: usize = runtime
+        .call_function(&module_handle, "test", json_args!())
+        .await?;
     assert_eq!(value, 2);
 
     // Fetch example
-    let data: rustyscript::serde_json::Value =
-        runtime.call_function(&module_handle, "fetch_example", json_args!())?;
+    let data: rustyscript::serde_json::Value = runtime
+        .call_function(&module_handle, "fetch_example", json_args!())
+        .await?;
     println!("{:?}", data);
     Ok(())
 }

@@ -4,7 +4,8 @@
 ///
 use rustyscript::{serde_json, Error, Module, Runtime};
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     // Our module will simply call a rust-side function
     let module = Module::new("test.js", " rustyscript.functions.setValue('foo'); ");
 
@@ -19,7 +20,7 @@ fn main() -> Result<(), Error> {
     })?;
 
     // Now we call the function from JS and make sure everything worked
-    runtime.load_module(&module)?;
+    runtime.load_module(&module).await?;
     let my_value: String = runtime.take().unwrap();
     assert_eq!(my_value, "foo");
 

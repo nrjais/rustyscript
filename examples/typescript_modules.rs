@@ -18,7 +18,8 @@
 ///
 use rustyscript::{json_args, Error, Module, Runtime};
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let module = Module::new(
         "test.ts",
         "
@@ -37,7 +38,7 @@ fn main() -> Result<(), Error> {
     // Pass 2 args into the entrypoint function
     // And expect a usize back from it
     let value: usize =
-        Runtime::execute_module(&module, vec![], Default::default(), json_args!("test", 5))?;
+        Runtime::execute_module(&module, vec![], Default::default(), json_args!("test", 5)).await?;
 
     assert_eq!(value, 2);
     Ok(())

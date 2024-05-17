@@ -14,7 +14,8 @@
 ///
 use rustyscript::{Error, Module, Runtime};
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let module = Module::new(
         "test.js",
         "
@@ -34,8 +35,8 @@ fn main() -> Result<(), Error> {
     let module2 = Module::new("test2.js", "");
 
     let mut runtime = Runtime::new(Default::default())?;
-    runtime.load_module(&module2)?;
-    runtime.load_module(&module)?;
+    runtime.load_module(&module2).await?;
+    runtime.load_module(&module).await?;
 
     Ok(())
 }

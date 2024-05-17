@@ -43,6 +43,7 @@ url_import = ["reqwest"]
 [dev-dependencies]
 version-sync = "0.9.5"
 criterion = "0.5.1"
+tokio-test = "0.4.4"
 
 [dependencies]
 deno_core = "0.280.0"

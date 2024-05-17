@@ -32,6 +32,7 @@ impl Runtime {
     /// use std::time::Duration;
     ///
     /// # fn main() -> Result<(), rustyscript::Error> {
+    /// # tokio_test::block_on(async {
     /// // Creates a runtime that will attempt to run function load() on start
     /// // And which will time-out after 50ms
     /// let mut runtime = Runtime::new(RuntimeOptions {
@@ -46,10 +47,11 @@ impl Runtime {
     ///     }
     /// ");
     ///
-    /// let module_handle = runtime.load_module(&module)?;
-    /// let value: String = runtime.call_entrypoint(&module_handle, json_args!())?;
+    /// let module_handle = runtime.load_module(&module).await?;
+    /// let value: String = runtime.call_entrypoint(&module_handle, json_args!()).await?;
     /// assert_eq!("Hello World!", value);
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
     ///
@@ -74,6 +76,7 @@ impl Runtime {
     /// use std::time::Duration;
     ///
     /// # fn main() -> Result<(), rustyscript::Error> {
+    /// # tokio_test::block_on(async {
     /// let module = Module::new("test.js", "
     ///     function load(obj) {
     ///         console.log(`Hello world: a=${obj.a}, b=${obj.b}`);
@@ -90,8 +93,9 @@ impl Runtime {
     ///     &[
     ///         Runtime::arg(MyStruct{a: 1, b: 2})?,
     ///     ]
-    /// )?;
+    /// ).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
     pub fn arg<A>(value: A) -> Result<serde_json::Value, Error>
@@ -108,6 +112,7 @@ impl Runtime {
     /// use std::time::Duration;
     ///
     /// # fn main() -> Result<(), rustyscript::Error> {
+    /// # tokio_test::block_on(async {
     /// let module = Module::new("test.js", "
     ///     function load(a, b) {
     ///         console.log(`Hello world: a=${a}, b=${b}`);
@@ -122,8 +127,9 @@ impl Runtime {
     ///         Runtime::into_arg("test"),
     ///         Runtime::into_arg(5),
     ///     ]
-    /// )?;
+    /// ).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
     pub fn into_arg<A>(value: A) -> serde_json::Value
@@ -203,16 +209,18 @@ impl Runtime {
     /// A `Result` containing the deserialized result of the function call (`T`)
     /// or an error (`Error`) if the function cannot be found, if there are issues with
     /// calling the function, or if the result cannot be deserialized.
-    pub fn call_stored_function<T>(
-        &mut self,
+    pub async fn call_stored_function<'a, T>(
+        &'a mut self,
         module_context: &ModuleHandle,
-        function: &JsFunction,
+        function: &JsFunction<'a>,
         args: &FunctionArguments,
     ) -> Result<T, Error>
     where
         T: deno_core::serde::de::DeserializeOwned,
     {
-        self.0.call_stored_function(module_context, function, args)
+        self.0
+            .call_stored_function(module_context, function, args)
+            .await
     }
 
     /// Calls a javascript function within the Deno runtime by its name and deserializes its return value.
@@ -231,14 +239,16 @@ impl Runtime {
     /// use rustyscript::{ json_args, Runtime, Module, Error };
     ///
     /// # fn main() -> Result<(), Error> {
+    /// # tokio_test::block_on(async {
     /// let mut runtime = Runtime::new(Default::default())?;
     /// let module = Module::new("/path/to/module.js", "export function f() { return 2; };");
-    /// let module = runtime.load_module(&module)?;
-    /// let value: usize = runtime.call_function(&module, "f", json_args!())?;
+    /// let module = runtime.load_module(&module).await?;
+    /// let value: usize = runtime.call_function(&module, "f", json_args!()).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
-    pub fn call_function<T>(
+    pub async fn call_function<T>(
         &mut self,
         module_context: &ModuleHandle,
         name: &str,
@@ -247,7 +257,7 @@ impl Runtime {
     where
         T: deno_core::serde::de::DeserializeOwned,
     {
-        self.0.call_function(module_context, name, args)
+        self.0.call_function(module_context, name, args).await
     }
 
     /// Get a value from a runtime instance
@@ -266,18 +276,24 @@ impl Runtime {
     /// use rustyscript::{ Runtime, Module, Error };
     ///
     /// # fn main() -> Result<(), Error> {
+    /// # tokio_test::block_on(async {
     /// let mut runtime = Runtime::new(Default::default())?;
     /// let module = Module::new("/path/to/module.js", "globalThis.my_value = 2;");
-    /// let module = runtime.load_module(&module)?;
-    /// let value: usize = runtime.get_value(&module, "my_value")?;
+    /// let module = runtime.load_module(&module).await?;
+    /// let value: usize = runtime.get_value(&module, "my_value").await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
-    pub fn get_value<T>(&mut self, module_context: &ModuleHandle, name: &str) -> Result<T, Error>
+    pub async fn get_value<T>(
+        &mut self,
+        module_context: &ModuleHandle,
+        name: &str,
+    ) -> Result<T, Error>
     where
         T: serde::de::DeserializeOwned,
     {
-        self.0.get_value(module_context, name)
+        self.0.get_value(module_context, name).await
     }
 
     /// Executes the given module, and returns a handle allowing you to extract values
@@ -298,14 +314,16 @@ impl Runtime {
     /// use rustyscript::{Runtime, Module, Error};
     ///
     /// # fn main() -> Result<(), Error> {
+    /// # tokio_test::block_on(async {
     /// let mut runtime = Runtime::new(Default::default())?;
     /// let module = Module::new("test.js", "rustyscript.register_entrypoint(() => 'test')");
-    /// runtime.load_module(&module);
+    /// runtime.load_module(&module).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
-    pub fn load_module(&mut self, module: &Module) -> Result<ModuleHandle, Error> {
-        self.0.load_modules(None, vec![module])
+    pub async fn load_module(&mut self, module: &Module) -> Result<ModuleHandle, Error> {
+        self.0.load_modules(None, vec![module]).await
     }
 
     /// Executes the given module, and returns a handle allowing you to extract values
@@ -330,18 +348,20 @@ impl Runtime {
     /// use rustyscript::{Runtime, Module, Error};
     ///
     /// # fn main() -> Result<(), Error> {
+    /// # tokio_test::block_on(async {
     /// let mut runtime = Runtime::new(Default::default())?;
     /// let module = Module::new("test.js", "rustyscript.register_entrypoint(() => 'test')");
-    /// runtime.load_modules(&module, vec![]);
+    /// runtime.load_modules(&module, vec![]).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
-    pub fn load_modules(
+    pub async fn load_modules(
         &mut self,
         module: &Module,
         side_modules: Vec<&Module>,
     ) -> Result<ModuleHandle, Error> {
-        self.0.load_modules(Some(module), side_modules)
+        self.0.load_modules(Some(module), side_modules).await
     }
 
     /// Executes the entrypoint function of a module within the Deno runtime.
@@ -360,16 +380,18 @@ impl Runtime {
     /// use rustyscript::{json_args, Runtime, Module, Error};
     ///
     /// # fn main() -> Result<(), Error> {
+    /// # tokio_test::block_on(async {
     /// let mut runtime = Runtime::new(Default::default())?;
     /// let module = Module::new("test.js", "rustyscript.register_entrypoint(() => 'test')");
-    /// let module = runtime.load_module(&module)?;
+    /// let module = runtime.load_module(&module).await?;
     ///
     /// // Run the entrypoint and handle the result
-    /// let value: String = runtime.call_entrypoint(&module, json_args!())?;
+    /// let value: String = runtime.call_entrypoint(&module, json_args!()).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
-    pub fn call_entrypoint<T>(
+    pub async fn call_entrypoint<T>(
         &mut self,
         module_context: &ModuleHandle,
         args: &FunctionArguments,
@@ -378,9 +400,10 @@ impl Runtime {
         T: deno_core::serde::de::DeserializeOwned,
     {
         if let Some(entrypoint) = module_context.entrypoint() {
-            let value: serde_json::Value =
-                self.0
-                    .call_function_by_ref_async(module_context, entrypoint.clone(), args)?;
+            let value: serde_json::Value = self
+                .0
+                .call_function_by_ref_async(module_context, entrypoint.clone(), args)
+                .await?;
             Ok(serde_json::from_value(value)?)
         } else {
             Err(Error::MissingEntrypoint(module_context.module().clone()))
@@ -408,12 +431,14 @@ impl Runtime {
     /// use rustyscript::{json_args, Runtime, Module, Error};
     ///
     /// # fn main() -> Result<(), Error> {
+    /// # tokio_test::block_on(async {
     /// let module = Module::new("test.js", "rustyscript.register_entrypoint(() => 2)");
-    /// let value: usize = Runtime::execute_module(&module, vec![], Default::default(), json_args!())?;
+    /// let value: usize = Runtime::execute_module(&module, vec![], Default::default(), json_args!()).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
-    pub fn execute_module<T>(
+    pub async fn execute_module<T>(
         module: &Module,
         side_modules: Vec<&Module>,
         runtime_options: RuntimeOptions,
@@ -423,8 +448,8 @@ impl Runtime {
         T: deno_core::serde::de::DeserializeOwned,
     {
         let mut runtime = Runtime::new(runtime_options)?;
-        let module = runtime.load_modules(module, side_modules)?;
-        let value: T = runtime.call_entrypoint(&module, entrypoint_args)?;
+        let module = runtime.load_modules(module, side_modules).await?;
+        let value: T = runtime.call_entrypoint(&module, entrypoint_args).await?;
         Ok(value)
     }
 }
@@ -456,8 +481,8 @@ mod test_runtime {
         assert_ne!("test", Runtime::into_arg(2));
     }
 
-    #[test]
-    fn test_get_value() {
+    #[tokio::test]
+    async fn test_get_value() {
         let module = Module::new(
             "test.js",
             "
@@ -470,30 +495,35 @@ mod test_runtime {
         let mut runtime = Runtime::new(Default::default()).expect("Could not create the runtime");
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
 
         assert_eq!(
             2,
             runtime
                 .get_value::<usize>(&module, "a")
+                .await
                 .expect("Could not find global")
         );
         assert_eq!(
             "test",
             runtime
                 .get_value::<String>(&module, "b")
+                .await
                 .expect("Could not find export")
         );
         runtime
             .get_value::<Undefined>(&module, "c")
+            .await
             .expect_err("Could not detect null");
         runtime
             .get_value::<Undefined>(&module, "d")
+            .await
             .expect_err("Could not detect undeclared");
     }
 
-    #[test]
-    fn test_load_module() {
+    #[tokio::test]
+    async fn test_load_module() {
         let mut runtime = Runtime::new(Default::default()).expect("Could not create the runtime");
         let module = Module::new(
             "test.js",
@@ -503,6 +533,7 @@ mod test_runtime {
         );
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
         assert_ne!(0, module.id());
 
@@ -522,12 +553,15 @@ mod test_runtime {
         );
         runtime
             .load_module(&module1)
+            .await
             .expect("Could not load modules");
         let module = runtime
             .load_module(&module2)
+            .await
             .expect("Could not load modules");
         let value: usize = runtime
             .call_entrypoint(&module, json_args!())
+            .await
             .expect("Could not call exported fn");
         assert_eq!(2, value);
 
@@ -544,11 +578,12 @@ mod test_runtime {
         );
         runtime
             .load_modules(&module, vec![])
+            .await
             .expect_err("Did not interupt after timeout");
     }
 
-    #[test]
-    fn test_load_modules() {
+    #[tokio::test]
+    async fn test_load_modules() {
         let mut runtime = Runtime::new(Default::default()).expect("Could not create the runtime");
         let module = Module::new(
             "test.js",
@@ -558,6 +593,7 @@ mod test_runtime {
         );
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
         assert_ne!(0, module.id());
 
@@ -577,9 +613,11 @@ mod test_runtime {
         );
         let module = runtime
             .load_modules(&module2, vec![&module1])
+            .await
             .expect("Could not load modules");
         let value: usize = runtime
             .call_entrypoint(&module, json_args!())
+            .await
             .expect("Could not call exported fn");
         assert_eq!(2, value);
 
@@ -596,11 +634,12 @@ mod test_runtime {
         );
         runtime
             .load_modules(&module, vec![])
+            .await
             .expect_err("Did not interupt after timeout");
     }
 
-    #[test]
-    fn test_call_entrypoint() {
+    #[tokio::test]
+    async fn test_call_entrypoint() {
         let mut runtime = Runtime::new(Default::default()).expect("Could not create the runtime");
         let module = Module::new(
             "test.js",
@@ -610,9 +649,11 @@ mod test_runtime {
         );
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
         let value: usize = runtime
             .call_entrypoint(&module, json_args!())
+            .await
             .expect("Could not call registered fn");
         assert_eq!(2, value);
 
@@ -629,9 +670,11 @@ mod test_runtime {
         );
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
         let value: usize = runtime
             .call_entrypoint(&module, json_args!())
+            .await
             .expect("Could not call exported fn");
         assert_eq!(2, value);
 
@@ -644,14 +687,16 @@ mod test_runtime {
         );
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
         runtime
             .call_entrypoint::<Undefined>(&module, json_args!())
+            .await
             .expect_err("Did not detect no entrypoint");
     }
 
-    #[test]
-    fn test_execute_module() {
+    #[tokio::test]
+    async fn test_execute_module() {
         let module = Module::new(
             "test.js",
             "
@@ -660,6 +705,7 @@ mod test_runtime {
         );
         let value: usize =
             Runtime::execute_module(&module, vec![], Default::default(), json_args!())
+                .await
                 .expect("Could not exec module");
         assert_eq!(2, value);
 
@@ -670,11 +716,12 @@ mod test_runtime {
         ",
         );
         Runtime::execute_module::<Undefined>(&module, vec![], Default::default(), json_args!())
+            .await
             .expect_err("Could not detect no entrypoint");
     }
 
-    #[test]
-    fn call_function() {
+    #[tokio::test]
+    async fn call_function() {
         let module = Module::new(
             "test.js",
             "
@@ -688,26 +735,32 @@ mod test_runtime {
         let mut runtime = Runtime::new(Default::default()).expect("Could not create the runtime");
         let module = runtime
             .load_modules(&module, vec![])
+            .await
             .expect("Could not load module");
 
         let result: usize = runtime
             .call_function(&module, "fna", json_args!(2))
+            .await
             .expect("Could not call global");
         assert_eq!(2, result);
 
         let result: String = runtime
             .call_function(&module, "fnb", json_args!())
+            .await
             .expect("Could not call export");
         assert_eq!("test", result);
 
         runtime
             .call_function::<Undefined>(&module, "fnc", json_args!())
+            .await
             .expect_err("Did not detect non-function");
         runtime
             .call_function::<Undefined>(&module, "fnd", json_args!())
+            .await
             .expect_err("Did not detect undefined");
         runtime
             .call_function::<Undefined>(&module, "fne", json_args!())
+            .await
             .expect("Did not allow undefined return");
     }
 }

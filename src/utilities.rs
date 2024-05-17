@@ -13,10 +13,12 @@ use crate::{Error, Module, ModuleWrapper, Runtime};
 /// # Example
 ///
 /// ```rust
-/// let result: i64 = rustyscript::evaluate("5 + 5").expect("The expression was invalid!");
+/// # tokio_test::block_on(async {
+/// let result: i64 = rustyscript::evaluate("5 + 5").await.expect("The expression was invalid!");
 /// assert_eq!(10, result);
+/// # })
 /// ```
-pub fn evaluate<T>(javascript: &str) -> Result<T, Error>
+pub async fn evaluate<T>(javascript: &str) -> Result<T, Error>
 where
     T: deno_core::serde::de::DeserializeOwned,
 {
@@ -31,8 +33,10 @@ where
         ),
     );
     let mut runtime = Runtime::new(Default::default())?;
-    let module = runtime.load_modules(&module, vec![])?;
-    runtime.call_function(&module, "rustyscript_evaluate", Runtime::EMPTY_ARGS)
+    let module = runtime.load_modules(&module, vec![]).await?;
+    runtime
+        .call_function(&module, "rustyscript_evaluate", Runtime::EMPTY_ARGS)
+        .await
 }
 
 /// Validates the syntax of some JS
@@ -47,12 +51,14 @@ where
 /// # Example
 ///
 /// ```rust
-/// assert!(rustyscript::validate("5 + 5").expect("Something went wrong!"));
+/// # tokio_test::block_on(async {
+/// assert!(rustyscript::validate("5 + 5").await.expect("Something went wrong!"));
+/// # })
 /// ```
-pub fn validate(javascript: &str) -> Result<bool, Error> {
+pub async fn validate(javascript: &str) -> Result<bool, Error> {
     let module = Module::new("test.js", javascript);
     let mut runtime = Runtime::new(Default::default())?;
-    match runtime.load_modules(&module, vec![]) {
+    match runtime.load_modules(&module, vec![]).await {
         Ok(_) => Ok(true),
         Err(Error::Runtime(_)) => Ok(false),
         Err(e) => Err(e),
@@ -71,10 +77,12 @@ pub fn validate(javascript: &str) -> Result<bool, Error> {
 /// # Example
 ///
 /// ```no_run
-/// let mut module = rustyscript::import("js/my_module.js").expect("Something went wrong!");
+/// # tokio_test::block_on(async {
+/// let mut module = rustyscript::import("js/my_module.js").await.expect("Something went wrong!");
+/// # })
 /// ```
-pub fn import(path: &str) -> Result<ModuleWrapper, Error> {
-    ModuleWrapper::new_from_file(path, Default::default())
+pub async fn import(path: &str) -> Result<ModuleWrapper, Error> {
+    ModuleWrapper::new_from_file(path, Default::default()).await
 }
 
 /// Resolve a path to absolute path
@@ -85,8 +93,10 @@ pub fn import(path: &str) -> Result<ModuleWrapper, Error> {
 /// # Example
 ///
 /// ```rust
+/// # tokio_test::block_on(async {
 /// let full_path = rustyscript::resolve_path("test.js").expect("Something went wrong!");
 /// assert!(full_path.ends_with("test.js"));
+/// # })
 /// ```
 pub fn resolve_path(path: &str) -> Result<String, Error> {
     Ok(path.to_module_specifier()?.to_string())
@@ -102,6 +112,7 @@ mod runtime_macros {
     /// use std::time::Duration;
     ///
     /// # fn main() -> Result<(), rustyscript::Error> {
+    /// # tokio_test::block_on(async {
     /// let module = Module::new("test.js", "
     ///     function load(a, b) {
     ///         console.log(`Hello world: a=${a}, b=${b}`);
@@ -113,8 +124,9 @@ mod runtime_macros {
     ///     &module, vec![],
     ///     Default::default(),
     ///     json_args!("test", 5)
-    /// )?;
+    /// ).await?;
     /// # Ok(())
+    /// # })
     /// # }
     /// ```
     ///
@@ -136,20 +148,25 @@ mod runtime_macros {
 mod test_runtime {
     use super::*;
 
-    #[test]
-    fn test_evaluate() {
-        assert_eq!(5, evaluate::<i64>("3 + 2").expect("invalid expression"));
-        evaluate::<i64>("5; 3 + 2").expect_err("invalid expression");
+    #[tokio::test]
+    async fn test_evaluate() {
+        assert_eq!(
+            5,
+            evaluate::<i64>("3 + 2").await.expect("invalid expression")
+        );
+        evaluate::<i64>("5; 3 + 2")
+            .await
+            .expect_err("invalid expression");
     }
 
-    #[test]
-    fn test_validate() {
-        assert!(validate("3 + 2").expect("invalid expression"));
-        assert!(!validate("5;+-").expect("invalid expression"));
+    #[tokio::test]
+    async fn test_validate() {
+        assert!(validate("3 + 2").await.expect("invalid expression"));
+        assert!(!validate("5;+-").await.expect("invalid expression"));
     }
 
-    #[test]
-    fn test_resolve_path() {
+    #[tokio::test]
+    async fn test_resolve_path() {
         assert!(resolve_path("test.js")
             .expect("invalid path")
             .ends_with("test.js"));

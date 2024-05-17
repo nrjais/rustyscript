@@ -13,7 +13,8 @@ struct MyStruct {
     value: usize,
 }
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Result<(), Error> {
     let module = Module::new(
         "test.js",
         "
@@ -34,15 +35,17 @@ fn main() -> Result<(), Error> {
     // Import the module
     // This returns a handle which is used to contextualize future calls
     // This ensures you get access to the exports for the module
-    let module_handle = runtime.load_module(&module)?;
+    let module_handle = runtime.load_module(&module).await?;
 
     // Calling an exported function
     // This will also work with anything in the global scope (eg: globalThis)
-    let function_value: String = runtime.call_function(&module_handle, "test", json_args!("A"))?;
+    let function_value: String = runtime
+        .call_function(&module_handle, "test", json_args!("A"))
+        .await?;
     assert_eq!(function_value, "foo: A");
 
     // Custom types can be exported from JS easily!
-    let value: MyStruct = runtime.get_value(&module_handle, "bar")?;
+    let value: MyStruct = runtime.get_value(&module_handle, "bar").await?;
     assert_eq!(
         MyStruct {
             name: "test".to_string(),
