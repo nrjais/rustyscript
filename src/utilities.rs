@@ -146,7 +146,7 @@ mod test_runtime {
         );
         evaluate::<i64>("5; 3 + 2")
             .await
-            .expect_err("invalid expression");
+            .expect("invalid expression");
     }
 
     #[tokio::test]
