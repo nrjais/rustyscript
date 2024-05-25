@@ -25,11 +25,7 @@ where
     T: deno_core::serde::de::DeserializeOwned,
 {
     let mut runtime = Runtime::new(Default::default())?;
-    let module = Module::new("rustyscript_eval.js", javascript);
-    let module = runtime.load_modules(&module, vec![]).await?;
-    runtime
-        .call_function(&module, "rustyscript_evaluate", Runtime::EMPTY_ARGS)
-        .await
+    runtime.eval(javascript)
 }
 
 /// Validates the syntax of some JS
