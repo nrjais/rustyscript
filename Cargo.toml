@@ -46,7 +46,7 @@ criterion = "0.5.1"
 tokio-test = "0.4.4"
 
 [dependencies]
-deno_core = "0.283.0"
+deno_core = "0.280.0"
 deno_ast = { version = "0.38.1", features = ["transpiling"] }
 thiserror = "1.0.59"
 serde = "1.0.200"
