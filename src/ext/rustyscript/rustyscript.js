@@ -26,4 +26,10 @@ const getterOnly = (getter) => {
 const applyToGlobal = (properties) =>
   Object.defineProperties(globalThis, properties);
 
+globalThis.rustyscript = {
+  register_entrypoint: (f) => Deno.core.ops.op_register_entrypoint(f),
+};
+
+Object.freeze(globalThis.rustyscript);
+
 export { nonEnumerable, readOnly, writeable, getterOnly, applyToGlobal };
