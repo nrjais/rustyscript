@@ -1,5 +1,7 @@
 use deno_core::Extension;
 
+pub mod rustyscript;
+
 #[cfg(feature = "console")]
 pub mod console;
 
@@ -21,7 +23,7 @@ pub mod webidl;
 ///
 /// Add up all required extensions
 pub fn all_extensions(user_extensions: Vec<Extension>) -> Vec<Extension> {
-    let mut extensions = Vec::new();
+    let mut extensions = rustyscript::extensions();
 
     #[cfg(feature = "console")]
     extensions.extend(console::extensions());

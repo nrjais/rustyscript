@@ -1,8 +1,10 @@
-import * as console from 'ext:deno_console/01_console.js';
+import * as console from "ext:deno_console/01_console.js";
 
-import { applyToGlobal, nonEnumerable } from 'ext:rustyscript/rustyscript.js';
+import { applyToGlobal, nonEnumerable } from "ext:rustyscript/rustyscript.js";
 applyToGlobal({
-    console: nonEnumerable(
-      new console.Console((msg, level) => globalThis.Deno.core.print(msg, level > 1)),
-    ),
+  console: nonEnumerable(
+    new console.Console((msg, level) =>
+      globalThis.Deno.core.print(msg, level > 1)
+    )
+  ),
 });
