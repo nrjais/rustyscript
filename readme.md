@@ -97,21 +97,6 @@ runtime.call_entrypoint::<Undefined>(&module_handle, json_args!(2))?;
 let internal_value: i64 = runtime.call_function(&module_handle, "getValue", json_args!())?;
 ```
 
-Rust functions can also be registered to be called from javascript:
-```rust
-use rustyscript::{ Runtime, Module, serde_json::Value };
-
-let module = Module::new("test.js", " rustyscript.functions.foo(); ");
-let mut runtime = Runtime::new(Default::default())?;
-runtime.register_function("foo", |args, _state| {
-    if let Some(value) = args.get(0) {
-        println!("called with: {}", value);
-    }
-    Ok(Value::Null)
-})?;
-runtime.load_module(&module)?;
-```
-
 For better performance calling rust code, consider using an extension instead - see the `runtime_extensions` example for details
 
 The 'state' parameter can be used to persist data - please see the `call_rust_from_js` example for details
@@ -131,7 +116,7 @@ Use with caution.
 
 Please note that the `web` feature will also enable fs_import and url_import, allowing arbitrary filesystem and network access for import statements
 
-| Feature     | Description                                                                                       | Preserves Sandbox | Dependencies                                                                   |  
+| Feature     | Description                                                                                       | Preserves Sandbox | Dependencies                                                                   |
 |-------------|---------------------------------------------------------------------------------------------------|------------------|---------------------------------------------------------------------------------|
 |console      |Provides `console.*` functionality from JS                                                         |yes               |deno_console                                                                     |
 |crypto       |Provides `crypto.*` functionality from JS                                                          |yes               |deno_crypto, deno_webidl                                                         |

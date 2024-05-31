@@ -102,27 +102,6 @@
 //! # })
 //! # }
 //! ```
-//!
-//! Rust functions can also be registered to be called from javascript:
-//! ```rust
-//! use rustyscript::{ Runtime, Module, serde_json::Value };
-//!
-//! # fn main() -> Result<(), rustyscript::Error> {
-//! # tokio_test::block_on(async {
-//! let module = Module::new("test.js", " rustyscript.functions.foo(); ");
-//! let mut runtime = Runtime::new(Default::default())?;
-//! runtime.register_function("foo", |args, _state| {
-//!     if let Some(value) = args.get(0) {
-//!         println!("called with: {}", value);
-//!     }
-//!     Ok(Value::Null)
-//! })?;
-//! runtime.load_module(&module).await?;
-//! # Ok(())
-//! # })
-//! # }
-//! ```
-//!
 //! For better performance calling rust code, consider using an extension instead - see the `runtime_extensions` example for details
 //!
 //! The 'state' parameter can be used to persist data - please see the `call_rust_from_js` example for details
@@ -189,7 +168,7 @@ pub use deno_core::serde_json;
 
 // Expose some important stuff from us
 pub use error::Error;
-pub use inner_runtime::{FunctionArguments, RsFunction};
+pub use inner_runtime::FunctionArguments;
 pub use js_function::JsFunction;
 pub use module::{Module, StaticModule};
 pub use module_handle::ModuleHandle;

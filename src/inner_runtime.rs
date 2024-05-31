@@ -6,13 +6,8 @@ use crate::{
     traits::{ToDefinedValue, ToModuleSpecifier, ToV8String},
     transpiler, Error, Module, ModuleHandle,
 };
-use deno_core::{
-    serde_json, v8, Extension, JsRuntime, OpState, PollEventLoopOptions, RuntimeOptions,
-};
-use std::{collections::HashMap, rc::Rc, time::Duration};
-
-/// Callback type for rust callback functions
-pub type RsFunction = fn(&FunctionArguments, &mut OpState) -> Result<serde_json::Value, Error>;
+use deno_core::{serde_json, v8, Extension, JsRuntime, PollEventLoopOptions, RuntimeOptions};
+use std::{rc::Rc, time::Duration};
 
 /// Type required to pass arguments to JsFunctions
 pub type FunctionArguments = [serde_json::Value];
@@ -112,23 +107,6 @@ impl InnerRuntime {
         let state = self.deno_runtime().op_state();
         let mut state = state.try_borrow_mut()?;
         state.put(value);
-
-        Ok(())
-    }
-
-    /// Register a rust function
-    pub fn register_function(&mut self, name: &str, callback: RsFunction) -> Result<(), Error> {
-        let state = self.deno_runtime().op_state();
-        let mut state = state.try_borrow_mut()?;
-
-        if !state.has::<HashMap<String, RsFunction>>() {
-            state.put(HashMap::<String, RsFunction>::new());
-        }
-
-        // Insert the callback into the state
-        state
-            .borrow_mut::<HashMap<String, RsFunction>>()
-            .insert(name.to_string(), callback);
 
         Ok(())
     }

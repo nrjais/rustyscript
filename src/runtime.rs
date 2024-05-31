@@ -1,6 +1,6 @@
 use crate::{
     inner_runtime::{InnerRuntime, InnerRuntimeOptions},
-    Error, FunctionArguments, JsFunction, Module, ModuleHandle, RsFunction,
+    Error, FunctionArguments, JsFunction, Module, ModuleHandle,
 };
 use deno_core::serde_json;
 
@@ -177,27 +177,6 @@ impl Runtime {
         T: 'static,
     {
         self.0.put(value)
-    }
-
-    /// Register a rust function to be callable from JS
-    /// ```rust
-    /// use rustyscript::{ Runtime, Module, serde_json::Value };
-    ///
-    /// # fn main() -> Result<(), rustyscript::Error> {
-    /// let module = Module::new("test.js", " rustyscript.functions.foo(); ");
-    /// let mut runtime = Runtime::new(Default::default())?;
-    /// runtime.register_function("foo", |args, _state| {
-    ///     if let Some(value) = args.get(0) {
-    ///         println!("called with: {}", value);
-    ///     }
-    ///     Ok(Value::Null)
-    /// })?;
-    ///
-    /// # Ok(())
-    /// # }
-    /// ```
-    pub fn register_function(&mut self, name: &str, callback: RsFunction) -> Result<(), Error> {
-        self.0.register_function(name, callback)
     }
 
     /// Evaluate a piece of non-ECMAScript-module JavaScript code
