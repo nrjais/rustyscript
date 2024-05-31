@@ -17,6 +17,7 @@ fn op_register_entrypoint(
 
 extension!(
     rustyscript,
+    ops = [op_register_entrypoint],
     esm_entry_point = "ext:rustyscript/rustyscript.js",
     esm = [ dir "src/ext/rustyscript", "rustyscript.js" ],
 );
